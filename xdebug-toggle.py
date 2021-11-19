@@ -1,35 +1,47 @@
 #!/usr/bin/env python
+import re
+import shutil
+import subprocess
 import sys
 import os
 
-xdebug_file = "/etc/php/7.3/mods-available/xdebug.ini"
-webserver_restart_cmd = "sudo systemctl restart apache2"
+webserver_restart_cmd = "valet restart"
+xdebug_file = "/opt/homebrew/etc/php/%s/conf.d/ext-xdebug.ini"
 
 
-def run(enable):
-    with open(xdebug_file, 'r') as inputfile:
-        output = []
-        for row in inputfile.readlines():
-            if enable:
-                output.append(row.replace('#', ''))
-            else:
-                if not row.startswith("#"):
-                    output.append("#%s" % row)
-                else:
-                    output.append(row)
-    with open(xdebug_file, 'w') as outputfile:
-        outputfile.writelines(output)
+def get_php_version():
+    res = subprocess.check_output(["php", "--version"])
+    m = re.match(r"PHP (\d+\.\d+).+", res)
+    if m:
+        return m.group(1)
+    else:
+        print "Cannot find PHP version"
+        exit(-1)
+
+
+def disable_xdebug(_xdebug_file):
+    directory, filename = os.path.split(_xdebug_file)
+    shutil.move(_xdebug_file, os.path.join(directory, filename.split(".")[0] + ".disabled"))
+
+
+def enable_xdebug(_xdebug_file):
+    directory, filename = os.path.split(_xdebug_file)
+    shutil.move(os.path.join(directory, filename.split(".")[0] + ".disabled"), _xdebug_file)
 
 
 if __name__ == "__main__":
     output = ""
+    php_version = get_php_version()
+    xdebug_file = xdebug_file % php_version
+    if not xdebug_file:
+        output = "xdebug already disabled"
     try:
         if sys.argv[1] == "enable":
-            run(True)
+            enable_xdebug(xdebug_file)
             os.system(webserver_restart_cmd)
             output = "Xdebug enabled"
         elif sys.argv[1] == "disable":
-            run(False)
+            disable_xdebug(xdebug_file)
             os.system(webserver_restart_cmd)
             output = "Xdebug disabled"
         else:
