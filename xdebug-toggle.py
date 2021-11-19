@@ -21,11 +21,18 @@ def get_php_version():
 
 def disable_xdebug(_xdebug_file):
     directory, filename = os.path.split(_xdebug_file)
-    shutil.move(_xdebug_file, os.path.join(directory, filename.split(".")[0] + ".disabled"))
+    disabled_file = os.path.join(directory, filename.split(".")[0] + ".disabled")
+    if os.path.exists(disabled_file):
+        print "Xdebug already disabled"
+        exit(-1)
+    shutil.move(_xdebug_file, disabled_file)
 
 
 def enable_xdebug(_xdebug_file):
     directory, filename = os.path.split(_xdebug_file)
+    if os.path.exists(_xdebug_file):
+        print "Xdebug already enabled"
+        exit(-1)
     shutil.move(os.path.join(directory, filename.split(".")[0] + ".disabled"), _xdebug_file)
 
 
@@ -33,14 +40,12 @@ if __name__ == "__main__":
     output = ""
     php_version = get_php_version()
     xdebug_file = xdebug_file % php_version
-    if not xdebug_file:
-        output = "xdebug already disabled"
     try:
-        if sys.argv[1] == "enable":
+        if sys.argv[1].startswith("e"):
             enable_xdebug(xdebug_file)
             os.system(webserver_restart_cmd)
             output = "Xdebug enabled"
-        elif sys.argv[1] == "disable":
+        elif sys.argv[1].startswith("d"):
             disable_xdebug(xdebug_file)
             os.system(webserver_restart_cmd)
             output = "Xdebug disabled"
